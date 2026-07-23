@@ -394,7 +394,7 @@ def build_outputs(per_file: list, levels: list, combine: str,
             full["category"] = "unsplit"
 
         meta_cols = [c for c in full.columns if c not in feature_cols
-                     and c not in ("label", "session", "category")]
+                     and c not in ("vector_id", "label", "session", "category")]
 
         level_dir = LEVEL_DIRS[level]
         cat_subdir = (lambda cat: f"{cat}/") if apply_split else (lambda cat: "")

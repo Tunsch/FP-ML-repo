@@ -1,6 +1,7 @@
 services:
   bme688-ei-converter:
     build: .
+    container_name: bme688-ei-converter
     ports:
-      - "8501:8501"
+      - "8502:8501"   # <Host-Port>:<Container-Port> -- links frei wählbar
     restart: unless-stopped

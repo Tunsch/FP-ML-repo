@@ -18,7 +18,22 @@ Danach im Browser: http://localhost:8501
 ```bash
 docker compose up -d --build
 ```
-Läuft danach unter `http://<server>:8501`.
+Läuft danach unter `http://<server>:8502` (siehe Portbelegung unten).
+
+### Port ändern
+
+In `docker-compose.yml` nur die linke Seite von `ports:` anpassen, z. B.
+`"8502:8501"` -> `"9000:8501"`. Der Container lauscht intern weiterhin auf
+8501, es ändert sich nur, unter welchem Port ihr von außen zugreift --
+Dockerfile/app.py müssen dafür nicht angefasst werden. Ein `container_name`
+ist nicht zwingend nötig, macht `docker ps`/`docker logs`/`docker stop`
+aber übersichtlicher (bereits in der compose-Datei gesetzt).
+
+Falls ihr ohne compose direkt mit `docker run` arbeitet:
+```bash
+docker build -t bme688-ei-converter .
+docker run -d --name bme688-ei-converter -p 9000:8501 bme688-ei-converter
+```
 
 **Hinweis:** Streamlit bringt keine Authentifizierung mit. Wenn der Server
 von außen erreichbar ist, den Container hinter einen Reverse Proxy mit
