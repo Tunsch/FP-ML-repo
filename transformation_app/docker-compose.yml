@@ -1,0 +1,6 @@
+services:
+  bme688-ei-converter:
+    build: .
+    ports:
+      - "8501:8501"
+    restart: unless-stopped
