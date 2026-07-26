@@ -43,6 +43,10 @@ def main():
     ap.add_argument("--test-ratio", type=float, default=0.2)
     ap.add_argument("--split-seed", type=int, default=42)
     ap.add_argument("--session-split", type=Path, default=None)
+    ap.add_argument("--label-map", type=Path, default=None,
+                     help="JSON-Datei {\"roher_Label_String\": \"kanonischer_Label_String\"} zum "
+                          "Zusammenführen von Label-Schreibvarianten (z.B. wenn sich die "
+                          "Namenskonvention der Aufnahme-App über die Zeit geändert hat)")
     args = ap.parse_args()
 
     if args.input_path.is_dir():
@@ -55,19 +59,23 @@ def main():
         csv_files = [args.input_path]
 
     session_split = json.loads(args.session_split.read_text()) if args.session_split else None
+    label_map = json.loads(args.label_map.read_text()) if args.label_map else None
 
     per_file = []
     for csv_path in csv_files:
         print(f"--- {csv_path.name} ---")
         try:
-            raw = load_session(csv_path, name_hint=csv_path.name)
+            raw, load_warnings = load_session(csv_path, name_hint=csv_path.name)
         except ValueError as e:
             print(f"[Übersprungen] {e}", file=sys.stderr)
             continue
+        for w in load_warnings:
+            print(f"  [Warnung] {w}")
         res = process_file(csv_path.stem, raw, args.level, args.level2_mode,
                             log_transform=not args.no_log,
                             impute_max_missing=args.impute_max_missing,
-                            impute_max_gap=args.impute_max_gap)
+                            impute_max_gap=args.impute_max_gap,
+                            label_map=label_map)
         for line in res["logs"]:
             print(" ", line.replace("\n", "\n  "))
         if not res["ok"]:

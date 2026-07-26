@@ -28,9 +28,13 @@ import pandas as pd
 
 REQUIRED_COLUMNS = [
     "sensor_index", "sensor_id", "timestamp_since_poweron",
-    "resistance_gassensor", "heater_profile_step_index",
-    "heater_profile_id", "label_name",
+    "resistance_gassensor", "heater_profile_step_index", "label_name",
 ]
+# heater_profile_id ist NICHT hart erforderlich: manche älteren Rohexporte
+# enthalten diese Spalte nicht. Sie wird nur für Level 2 (Sensorpaar je
+# Heizprofil) gebraucht -- fehlt sie, wird ein Platzhalter je Sensor gesetzt
+# und Level 1/3 funktionieren unverändert, Level 2 liefert für diese Datei
+# dann keine Paare (Warnung statt Absturz).
 
 LEVEL_DIRS = {1: "level1_per_sensor", 2: "level2_per_profile", 3: "level3_all_sensors"}
 LEVEL_NAMES = {1: "pro Sensor", 2: "pro Heizprofil", 3: "über alle Sensoren"}
@@ -47,14 +51,41 @@ def sanitize_label(label: str) -> str:
 # Einlesen & Zyklen erkennen
 # ---------------------------------------------------------------------
 
-def load_session(file_like_or_path, name_hint: Optional[str] = None) -> pd.DataFrame:
+def peek_label(file_like_or_path) -> Optional[str]:
+    """Liest nur die label_name-Spalte der ersten Zeile -- schnelle Vorschau,
+    ohne die ganze Datei einzulesen. Gibt None zurück, wenn die Spalte fehlt
+    oder die Datei nicht lesbar ist."""
+    try:
+        df = pd.read_csv(file_like_or_path, usecols=["label_name"], nrows=1)
+        if hasattr(file_like_or_path, "seek"):
+            file_like_or_path.seek(0)
+        return str(df["label_name"].iloc[0]).strip()
+    except Exception:
+        if hasattr(file_like_or_path, "seek"):
+            file_like_or_path.seek(0)
+        return None
+
+
+def load_session(file_like_or_path, name_hint: Optional[str] = None) -> tuple[pd.DataFrame, list]:
     """Liest eine Session-CSV. file_like_or_path kann ein Pfad ODER ein
-    file-like Objekt sein (z.B. ein von Streamlit hochgeladenes File)."""
+    file-like Objekt sein (z.B. ein von Streamlit hochgeladenes File).
+    Gibt (DataFrame, Liste von Warnungen) zurück."""
     df = pd.read_csv(file_like_or_path)
     missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
     if missing:
         raise ValueError(f"Fehlende Spalten{f' in {name_hint}' if name_hint else ''}: {missing}")
-    return df
+
+    warnings = []
+    if "heater_profile_id" not in df.columns:
+        df = df.copy()
+        df["heater_profile_id"] = "unknown_s" + df["sensor_index"].astype(str)
+        warnings.append(
+            f"{name_hint or 'Datei'}: Spalte 'heater_profile_id' fehlt im Rohexport -- "
+            "durch einen Platzhalter je Sensor ersetzt. Level 1 und Level 3 sind davon "
+            "nicht betroffen, Level 2 (Sensorpaar je Heizprofil) liefert für diese Datei "
+            "keine Paare, da nicht bekannt ist, welche 2 Sensoren dasselbe Profil nutzen."
+        )
+    return df, warnings
 
 
 def detect_cycles(df: pd.DataFrame) -> pd.DataFrame:
@@ -263,10 +294,19 @@ def make_level3_df(vectors: pd.DataFrame):
 # ---------------------------------------------------------------------
 
 def process_file(session_tag: str, raw_df: pd.DataFrame, levels: list, level2_mode: str,
-                  log_transform: bool, impute_max_missing: int, impute_max_gap: int):
+                  log_transform: bool, impute_max_missing: int, impute_max_gap: int,
+                  label_map: Optional[dict] = None):
     """Verarbeitet eine Session (bereits als DataFrame eingelesen) und baut
     die gewünschten Level-DataFrames. Gibt ein dict mit allen Zwischen-
-    ergebnissen inkl. Logtexten zurück (für CLI-print bzw. Streamlit-Anzeige)."""
+    ergebnissen inkl. Logtexten zurück (für CLI-print bzw. Streamlit-Anzeige).
+
+    label_map: optionales dict {roher Label-String: kanonischer Label-String}.
+    Wird genutzt, um Schreibvarianten desselben Labels zusammenzuführen
+    (z.B. wenn sich die Namenskonvention der Aufnahme-App über die Zeit
+    geändert hat -- "Rasur" / "HP Exp 3 Rasur" / "HP Exp 3 Bad Rasur" sollen
+    z.B. dieselbe Klasse sein). Führende/nachgestellte Leerzeichen im
+    Rohlabel werden dabei immer automatisch entfernt, unabhängig von
+    label_map."""
     logs = []
     df = detect_cycles(raw_df)
     _, report_text = report_incomplete_cycles(df)
@@ -280,7 +320,13 @@ def process_file(session_tag: str, raw_df: pd.DataFrame, levels: list, level2_mo
     if vectors.empty:
         return {"session_tag": session_tag, "label": None, "built": {}, "logs": logs, "ok": False}
 
-    label = vectors["label"].iloc[0]
+    raw_label = str(vectors["label"].iloc[0]).strip()
+    label = raw_label
+    if label_map and raw_label in label_map:
+        label = label_map[raw_label]
+    if label != raw_label:
+        logs.append(f"[Label] '{raw_label}' -> '{label}' (per Zuordnungstabelle zusammengeführt)")
+
     built = {}
     if 1 in levels:
         built[1] = make_level1_df(vectors)[:2]
