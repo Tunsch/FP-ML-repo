@@ -5,6 +5,11 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Absicherung gegen CPU-spezifische Segfaults in libarrow.so (SIMD/AVX-
+# Dispatch-Probleme auf manchen CPUs/Virtualisierungsumgebungen) -- erzwingt
+# den portablen Ausführungspfad ohne CPU-Feature-Erkennung.
+ENV ARROW_USE_SIMD=0
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
