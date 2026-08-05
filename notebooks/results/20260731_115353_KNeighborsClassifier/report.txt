@@ -1,0 +1,10 @@
+              precision    recall  f1-score   support
+
+    Deospray       1.00      0.79      0.88       108
+       Rasur       0.52      1.00      0.69        33
+   Raumspray       0.65      0.16      0.26        81
+Zähne putzen       0.25      0.63      0.35        35
+
+    accuracy                           0.60       257
+   macro avg       0.61      0.64      0.55       257
+weighted avg       0.73      0.60      0.59       257
