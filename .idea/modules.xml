@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/FP-ML-repo.iml" filepath="$PROJECT_DIR$/.idea/FP-ML-repo.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/ml-app-lite.iml" filepath="$PROJECT_DIR$/.idea/ml-app-lite.iml" />
     </modules>
   </component>
 </project>

@@ -1,46 +1,72 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Optional
+import random
 import pandas as pd
 
-from core import train_test_split_by_session
 from config import ExperimentConfig
 
-
-def load_feature_table(data_dir: Path, config: ExperimentConfig) -> tuple[pd.DataFrame, list[str]]:
-    #Einlesen aller CSVs aus source_dir.
-    csv_files = sorted(data_dir.glob("*.csv"))
+def load_csv_dir(data_dir: Path) -> pd.DataFrame:
+    csv_files = sorted(data_dir.rglob("*.csv"))
     if not csv_files:
-        raise FileNotFoundError(f"No CSVs in {data_dir}.")
+        raise FileNotFoundError(f"No CSV files in {data_dir}")
+    df = pd.concat([pd.read_csv(csv_file) for csv_file in csv_files], ignore_index=True)
+    print(f"{data_dir}: {len(csv_files)} Datein, {df.shape[0]} Zeilen geladen.")
+    return df
 
-    df = pd.concat([pd.read_csv(f) for f in csv_files], ignore_index=True)
-    #Spalten mit Datenpunkten
-    feature_cols = [c for c in df.columns if c not in config.meta_columns]
-    #Info
-    print(f"Daten erfolgreich geladen! Gesamte Zeilen: {df.shape[0]}, Spalten: {df.shape[1]}")
-    df.head()
-    return df, feature_cols
+def split_by_session(df: pd.DataFrame, config: ExperimentConfig) -> pd.DataFrame:
+    #Aufteilung wird getrennt nach Label berechnet. Nie selbe Session in Training und Testing
+    rng = random.Random(config.split_seed)
+    sessions_by_label: dict = {}
+    cols = [config.session_column, config.label_column]
+    for session, label in df[cols].drop_duplicates().itertuples(index=False):
+        sessions_by_label.setdefault(label, []).append(session)
 
+    categories: dict = {}
+    for label, sessions in sessions_by_label.items():
+        sessions = sorted(sessions)
+        rng.shuffle(sessions)
+        n_test = max(1, round(len(sessions) * config.test_ratio)) if len(sessions) > 1 else 0
+        test_sessions = set(sessions[:n_test])
+        categories.update({s: "testing" if s in test_sessions else "training" for s in sessions})
 
-def split_dataframe(df: pd.DataFrame, config: ExperimentConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
-    #Split mit expliziten (neuen) Testdaten
-    if config.test_ratio is not None:
-        test_path = Path(config.test_data_dir)
-        if not test_path.is_dir():
-            test_path = config.source_dir / test_path
+    if config.explicit_test_sessions:
+        categories.update(config.explicit_test_sessions)
 
-        test_df = pd.read_csv(test_path)
-        train_df = df.copy()
+    df = df.copy()
+    df["category"] = df[config.session_column].map(categories).fillna("training")
+    return df
 
+def split_dataset(config: ExperimentConfig) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
+    #Split entsprechend config.split_mode, bei "session" je Label stratifiziert
+    if config.split_mode == "session":
+        df = load_csv_dir(config.source_dir)
+        df = split_by_session(df, config)
+
+    elif config.split_mode == "explicit":
+        if config.test_data_dir is None:
+            raise ValueError("split_mode='explicit' erfordert test_data_dir in der Config.")
+        train_df = load_csv_dir(config.source_dir)
+        test_df = load_csv_dir(config.test_data_dir)
         train_df["category"] = "training"
         test_df["category"] = "testing"
-    #Split mit bestehenden Sessions
+        df = pd.concat([train_df, test_df], ignore_index=True)
+
     else:
-        df_split = train_test_split_by_session(df, test_ratio=config.test_ratio, seed=config.split_seed)
-        train_df = df_split[df_split.category == "training"].copy()
-        test_df = df_split[df_split.category == "testing"].copy()
-    #Leakage-Check
-    overlap = set(train_df["session"]) & set(test_df["session"])
+        raise ValueError(f"split_mode={config.split_mode} is not supported.")
+
+    #Leakage-Check zwischen Training und Testing
+    train_sessions = set(df.loc[df.category == "training", config.session_column])
+    test_sessions = set(df.loc[df.category == "testing", config.session_column])
+    overlap = train_sessions & test_sessions
     if overlap:
         raise RuntimeError(f"Sessions overlap between training and testing sessions: {overlap}")
-    return train_df, test_df
+
+    feature_cols = [c for c in df.columns if c not in config.non_feature_columns]
+    train_df = df[df.category == "training"].reset_index(drop=True)
+    test_df = df[df.category == "testing"].reset_index(drop=True)
+    print(f"Gesamt: {df.shape[0]} Zeilen, {len(feature_cols)} Features "
+          f"| training={len(train_df)} testing={len(test_df)}")
+
+    return train_df, test_df, feature_cols
