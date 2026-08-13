@@ -1,10 +1,8 @@
 import pandas as pd
 
-def run_exploration(train_df: pd.DataFrame):
-    print(train_df.shape)
-    print("Klassen", train_df["label"].unique)
-    print("Sessions je Klasse:\n", train_df.groupby("label").nunique())
-    train_df.head()
-    train_df.describe()
+def run_exploration(train_df: pd.DataFrame, feature_cols: list[str]):
+
+    print("\nStatistik:")
+    print(train_df[feature_cols].describe().T[["mean", "std", "min", "50%", "max"]])
 
     #Plots

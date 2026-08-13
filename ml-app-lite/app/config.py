@@ -19,6 +19,11 @@ class ExperimentConfig:
     #Für split_mode = "explicit"
     test_data_dir: Optional[Path] = None #anpassen
 
+    #Preprocessing
+    log_transform: bool = True
+    #max. Anzahl fehlender Feature-Werte pro Zeile, die imputiert werden. Zeilen mit fehlenden Werten werden verworfen.
+    impute_max_missing: int = 2
+
     #Spaltendefinitionen bei Änderung des Input-Formats anpassen
     label_column: str = "label"
     session_column: str = "session"
@@ -35,7 +40,16 @@ class ExperimentConfig:
     )
 
     # Speicherort des präparierten Datensatzes
-    ml_data_dir: Path = Path("ml_data/ml_input_data/")
+    ml_data_dir: Path = Path("/home/tun/Projects/tuc/ML/FP-ML-repo/ml-app-lite/app/ml_data/ml_input_data")
+
+    #Speicherort für Reports
+    report_dir: Path = Path("/home/tun/Projects/tuc/ML/FP-ML-repo/ml-app-lite/app/ml_data/reports")
+
+    #Validierung: Anzahl der Folds für GroupKFold
+    cv_folds: int = 5
+
+    #Validierung: Metrik zur Bewertung/Sortierung der Modell-Konfigurationen
+    selection_metric: str = "f1_macro"
 
     random_seed: int = 42
 
