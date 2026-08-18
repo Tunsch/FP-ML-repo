@@ -5,6 +5,7 @@ from pandas import Series
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 from typing import Any
+from __future__ import annotations
 
 from config import ExperimentConfig
 
@@ -38,7 +39,7 @@ def impute_within_session(X: pd.DataFrame, session: pd.Series) -> pd.DataFrame:
 def preprocess_pipeline( train_df: pd.DataFrame,
                          test_df: pd.DataFrame,
                          feature_cols: list[str],
-                         config: ExperimentConfig) -> tuple[Any, Series[Any], Any, Series[Any]]:
+                         config: ExperimentConfig) -> tuple[Any, Any, Series[Any], Series[Any], Series[Any], Series[Any]]:
     #1. Zeilen mit zu vielen fehlenden Feature-Values verwerfen
     #Bei Testdaten keine fehlenden oder imputierten Werte erlaubt
     train_df = drop_too_incomplete(train_df, feature_cols, config.impute_max_missing)
@@ -47,6 +48,8 @@ def preprocess_pipeline( train_df: pd.DataFrame,
     #2. Modellinputs generieren
     y_train = train_df[config.label_column].copy()
     y_test = test_df[config.label_column].copy()
+    groups_train = train_df[config.session_column].copy()
+    groups_test = test_df[config.session_column].copy()
 
     X_train_raw = train_df[feature_cols].copy()
     X_test_raw = test_df[feature_cols].copy()
@@ -66,7 +69,7 @@ def preprocess_pipeline( train_df: pd.DataFrame,
     X_train_scaled = scaler.fit_transform(X_train_imputed)
     X_test_scaled = scaler.transform(X_test_imputed)
 
-    return X_train_scaled, X_test_scaled, y_train, y_test
+    return X_train_scaled, X_test_scaled, y_train, y_test, groups_train, groups_test
 
 
 

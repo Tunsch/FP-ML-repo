@@ -11,10 +11,11 @@ def main():
     train_df, test_df, feature_cols = split_dataset(config)
 
     #2. Explorative Datenanalyse
-    run_exploration(train_df, feature_cols)
+    run_exploration(train_df, feature_cols, config)
 
     #3. Preprocessing
-    X_train, X_test, y_train, y_test = preprocess_pipeline(train_df, test_df, feature_cols, config)
+    X_train, X_test, y_train, y_test, groups_train, groups_test = preprocess_pipeline(
+        train_df, test_df, feature_cols, config)
 
     #4. Speichern per joblib
     output_dir = Path(config.ml_data_dir)
@@ -24,6 +25,8 @@ def main():
         "X_test": X_test,
         "y_train": y_train,
         "y_test": y_test,
+        "groups_train": groups_train, #Sessions je Zeile, für sessionsweise CV (z. B. GroupKFold)
+        "groups_test": groups_test,
         #"preprocessor": preprocessor,
         "config": config,
     }
