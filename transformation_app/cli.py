@@ -36,7 +36,7 @@ def main():
     ap.add_argument("--no-log", action="store_true")
     ap.add_argument("--impute-max-missing", type=int, default=0)
     ap.add_argument("--impute-max-gap", type=int, default=3)
-    ap.add_argument("--combine", choices=["vector", "session", "label", "all"], default="vector")
+    ap.add_argument("--combine", choices=["vector", "session", "label", "all", "hierarchy"], default="hierarchy")
     ap.add_argument("--apply-split", action="store_true",
                      help="Train/Test-Split bereits jetzt festlegen (Default: aus, 'session'-Spalte "
                           "bleibt für einen späteren Split z.B. im Notebook erhalten)")

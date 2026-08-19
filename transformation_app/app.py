@@ -47,12 +47,13 @@ with st.sidebar:
 
     st.header("4. Output-Zusammenfassung")
     combine = st.radio(
-        "Combine-Modus", ["vector", "session", "label", "all"],
+        "Combine-Modus", ["vector", "session", "label", "all", "hierarchy"],
         format_func=lambda c: {
             "vector": "vector – 1 Datei je Vektor",
             "session": "session – 1 Datei je Mess-Session",
             "label": "label – 1 Datei je Klasse",
             "all": "all – 1 Gesamtdatei",
+            "hierarchy": "hierarchy – Messobjekt/Session/Heizprofil",
         }[c],
         index=0,
     )
