@@ -489,3 +489,24 @@ def build_outputs(per_file: list, levels: list, combine: str,
                 outputs[path] = g[cols].to_csv(index=False, float_format="%.6f")
 
     return outputs
+
+
+def truncate_session_by_time(df: pd.DataFrame, max_minutes: float) -> pd.DataFrame:
+    """
+    Kürzt eine Session ab, ohne Zyklen zu zerschneiden.
+    Ein Zyklus bleibt komplett erhalten, wenn sein Startzeitpunkt
+    vor dem Limit liegt.
+    """
+    df_cycles = detect_cycles(df)
+    max_ms = max_minutes * 60 * 1000
+
+    valid_cycles = []
+    for (sensor, cycle), group in df_cycles.groupby(["sensor_index", "cycle_id"]):
+        if group["timestamp_since_poweron"].min() <= max_ms:
+            valid_cycles.append(group)
+
+    if not valid_cycles:
+        return pd.DataFrame()
+
+    # cycle_id (von detect_cycles) wieder entfernen für sauberen Export
+    return pd.concat(valid_cycles, ignore_index=True).drop(columns=["cycle_id"], errors="ignore")
