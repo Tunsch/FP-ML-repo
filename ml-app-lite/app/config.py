@@ -45,8 +45,8 @@ class ExperimentConfig:
     #Speicherort für Reports
     report_dir: Path = Path("/home/tun/Projects/tuc/ML/FP-ML-repo/ml-app-lite/app/ml_data/reports")
 
-    #Validierung: Anzahl der Folds für GroupKFold
-    cv_folds: int = 5
+    #Validierung: Anzahl der Folds für GroupKFold; Problem: Wenige Sessions
+    cv_folds: int = 3
 
     #Validierung: Metrik zur Bewertung/Sortierung der Modell-Konfigurationen
     selection_metric: str = "f1_macro"

@@ -4,7 +4,7 @@ import pandas as pd
 
 from sklearn.base import clone
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import GridSearchCV, GroupKFold
+from sklearn.model_selection import GridSearchCV, StratifiedGroupKFold
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 
@@ -41,7 +41,7 @@ CANDIDATE_MODELS: dict[str, dict[str, Any]] = {
 #Verfügbare Metriken aus der eine per config.selection_metric je das beste Modell bestimmt
 SCORING: dict[str, str] = {
     "accuracy": "accuracy",
-    "f1": "f1_macro",
+    "f1_macro": "f1_macro",
     "balanced_accuracy": "balanced_accuracy",
     }
 
@@ -50,9 +50,10 @@ def run_validation(X_train: pd.DataFrame, y_train: pd.Series,
     #Führt für jeden Kandidaten-Modelltyp ein GridSearchCV mit sessionweiser GroupKFold-CV durch.
     #Gibt zurück: results_df -> je eine Zeile pro Modelltyp
     #best_estimators: ungefitteter estimator mit den besten Parametern
+    #StratifiedGroupKFold, um Klassen in den Folds zu balancen
 
-    cv = GroupKFold(n_splits=config.cv_folds)
-    rows = list[dict[str, Any]] = []
+    cv = StratifiedGroupKFold(n_splits=config.cv_folds)
+    rows: list[dict[str, Any]] = []
     best_estimators: dict[str, Any] = {}
 
     for name, spec in CANDIDATE_MODELS.items():
@@ -65,7 +66,7 @@ def run_validation(X_train: pd.DataFrame, y_train: pd.Series,
         )
         gs.fit(X_train, y_train, groups=groups)
 
-        n_candidates = len[gs.cv_results_["params"]]
+        n_candidates = len(gs.cv_results_["params"])
         for i in range(n_candidates):
             row: dict[str, Any] = {
                 "model": name,

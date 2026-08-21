@@ -11,7 +11,7 @@ def main():
     train_df, test_df, feature_cols = split_dataset(config)
 
     #2. Explorative Datenanalyse
-    run_exploration(train_df, feature_cols, config)
+    run_exploration(train_df, feature_cols)
 
     #3. Preprocessing
     X_train, X_test, y_train, y_test, groups_train, groups_test = preprocess_pipeline(

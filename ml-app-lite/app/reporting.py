@@ -8,7 +8,7 @@ from typing import Any
 import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.metrics import ConfusionMatrixDisplay
-from sklearn.model_selection import GroupKFold, cross_val_predict
+from sklearn.model_selection import StratifiedGroupKFold, cross_val_predict
 
 from config import ExperimentConfig
 
@@ -52,7 +52,7 @@ def generate_model_plots(results_df: pd.DataFrame, best_estimators: dict[str, An
     rein informativ, kein Einfluss auf die Auswahl."""
     out_dir = Path(config.report_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    cv = GroupKFold(n_splits=config.cv_folds)
+    cv = StratifiedGroupKFold(n_splits=config.cv_folds)
     metric = config.selection_metric
 
     for name, estimator in best_estimators.items():
