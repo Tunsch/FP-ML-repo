@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class ExperimentConfig:
-    source_dir = Path("/home/tun/Projects/tuc/ML/FP-ML-repo/raw_input_data/Bad") #anpassen
+    source_dir = Path("/home/tun/Projects/tuc/ML/FP-ML-repo/raw_input_data/Bad/level2_per_profile") #anpassen
 
     #Art des Splits. Bei explicit test_data_dir angeben
     split_mode: Literal["session", "explicit"] = "session"
@@ -38,6 +38,11 @@ class ExperimentConfig:
             "cycle_id_b",
         ]
     )
+    #Auswahl der Heizprofile
+    #None -> alle im Datensatz gefundenen Profile nacheinander verarbeiten.
+    #"heater_322" (z.B.) -> nur dieses eine Profil.
+    heater_profile: Optional[str] = "heater_413"
+
 
     # Speicherort des präparierten Datensatzes
     ml_data_dir: Path = Path("/home/tun/Projects/tuc/ML/FP-ML-repo/ml-app-lite/app/ml_data/ml_input_data")

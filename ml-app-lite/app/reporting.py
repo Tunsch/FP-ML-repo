@@ -1,6 +1,5 @@
-""""Export der Validierungs-/Modellergebnisse (CSV, alle geprüften
+"""Export der Validierungs-/Modellergebnisse (CSV, alle geprüften
 Konfigurationen) und Plots der jeweils besten Konfiguration PRO Modelltyp."""
-
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -11,11 +10,15 @@ from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.model_selection import StratifiedGroupKFold, cross_val_predict
 
 from config import ExperimentConfig
+from cv_utils import effective_cv_folds
 
 RESULTS_FILENAME = "validation_results.csv"
 
+
 def export_results(results_df: pd.DataFrame, config: ExperimentConfig) -> pd.DataFrame:
-    #Hängt aktuelle Validierungsergebnisse an die results.csv an und gibt vollständigen Verlauf zurück
+    """Hängt die aktuellen Validierungsergebnisse (alle geprüften
+    Konfigurationen) an die Ergebnis-CSV an (erzeugt sie beim ersten Aufruf)
+    und gibt den vollständigen Verlauf zurück."""
     out_dir = Path(config.report_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     results_path = out_dir / RESULTS_FILENAME
@@ -30,12 +33,13 @@ def export_results(results_df: pd.DataFrame, config: ExperimentConfig) -> pd.Dat
         history = results_df
     history.to_csv(results_path, index=False)
     print(f"{len(results_df)} Ergebniszeile(n) angehängt an {results_path} "
-          f"(gesamt: {len(history)}.")
+          f"(gesamt: {len(history)}).")
     return history
 
+
 def generate_model_plots(results_df: pd.DataFrame, best_estimators: dict[str, Any],
-                      X_train: pd.DataFrame, y_train: pd.Series,
-                      groups: pd.Series, config: ExperimentConfig) -> None:
+                          X_train: pd.DataFrame, y_train: pd.Series,
+                          groups: pd.Series, config: ExperimentConfig) -> None:
     """Erzeugt für JEDEN Modelltyp in best_estimators einen Konfusionsmatrix-
     Plot bei dessen bester Konfiguration (out-of-fold via GroupKFold), unter
     modellspezifischem Dateinamen ('{model}_confusion_matrix.png').
@@ -52,11 +56,11 @@ def generate_model_plots(results_df: pd.DataFrame, best_estimators: dict[str, An
     rein informativ, kein Einfluss auf die Auswahl."""
     out_dir = Path(config.report_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    cv = StratifiedGroupKFold(n_splits=config.cv_folds)
+    cv = StratifiedGroupKFold(n_splits=effective_cv_folds(y_train, groups, config.cv_folds))
     metric = config.selection_metric
 
     for name, estimator in best_estimators.items():
-        y_pred = cross_val_predict(estimator, X_train, y_train, cv=cv, groups=groups)
+        y_pred = cross_val_predict(estimator, X_train, y_train, groups=groups, cv=cv)
 
         score_str = ""
         if metric in results_df.columns and "is_best_for_model" in results_df.columns:
@@ -64,11 +68,16 @@ def generate_model_plots(results_df: pd.DataFrame, best_estimators: dict[str, An
             if len(best_row):
                 score_str = f"\n{metric}={best_row.iloc[0][metric]:.3f}"
 
-    fig, ax = plt.subplots(figsize=(5, 5))
-    ConfusionMatrixDisplay.from_predictions(y_train, y_pred, ax=ax)
-    ax.set_title (f"{name} (Validierung, out-of-fold, beste Konfiguration){score_str}")
-    fig.tight_layout()
-    fig.savefig(out_dir / f"{name}_confusion_matrix.png", dpi=150)
-    plt.close(fig)
-    print(f"Plot für {name} gespeichert unter {out_dir}/{name}_confusion_matrix.png")
-
+        fig, ax = plt.subplots(figsize=(6.5, 6))
+        ConfusionMatrixDisplay.from_predictions(y_train, y_pred, ax=ax, colorbar=True)
+        #Titel kompakter (keine Wiederholung von "Konfiguration") und in
+        #eigener Zeile über der Achse statt zentriert über Achse+Colorbar,
+        #damit er bei langen Modellnamen nicht in die Colorbar hineinragt.
+        fig.suptitle(f"{name} -- Validierung (out-of-fold){score_str}", fontsize=11)
+        #x-Achsenbeschriftungen schräg stellen, damit sie sich bei längeren
+        #Klassennamen nicht gegenseitig überlappen.
+        plt.setp(ax.get_xticklabels(), rotation=30, ha="right")
+        fig.tight_layout(rect=[0, 0, 1, 0.94]) #Platz für suptitle freihalten
+        fig.savefig(out_dir / f"{name}_confusion_matrix.png", dpi=150)
+        plt.close(fig)
+        print(f"Plot für {name} gespeichert unter {out_dir}/{name}_confusion_matrix.png")

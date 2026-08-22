@@ -7,13 +7,36 @@ import pandas as pd
 
 from config import ExperimentConfig
 
-def load_csv_dir(data_dir: Path) -> pd.DataFrame:
+def load_csv_dir(data_dir: Path, heater_profile: Optional[str] = None,
+                 heater_profile_column: str = "heater_profile_id") -> pd.DataFrame:
     csv_files = sorted(data_dir.rglob("*.csv"))
     if not csv_files:
         raise FileNotFoundError(f"No CSV files in {data_dir}")
     df = pd.concat([pd.read_csv(csv_file) for csv_file in csv_files], ignore_index=True)
     print(f"{data_dir}: {len(csv_files)} Datein, {df.shape[0]} Zeilen geladen.")
+
+    if heater_profile is not None:
+        n_before = len(df)
+        df = df[df[heater_profile_column] == heater_profile].reset_index(drop=True)
+        if df.empty:
+            available = sorted(pd.concat(
+                [pd.read_csv(f, usecols=[heater_profile_column]) for f in csv_files]
+            )[heater_profile_column].unique())
+            raise ValueError(f"Heizprofil '{heater_profile}' nicht in {data_dir} gefunden. "
+                             f"Verfügbar: {available}")
+        print(f"{data_dir}: auf Heizprofil '{heater_profile}' gefiltert "
+              f"({len(df)}/{n_before} Zeilen).")
     return df
+
+def discover_heater_profiles(data_dir: Path, heater_profile_column: str = "heater_profile_id") -> list[str]:
+    #Findet alle Heizprofile
+    csv_files = sorted(Path(data_dir).rglob("*.csv"))
+    if not csv_files:
+        raise FileNotFoundError(f"No CSV files in {data_dir}")
+    profiles: set[str] = set()
+    for csv_file in csv_files:
+        profiles.update(pd.read_csv(csv_file, usecols=[heater_profile_column])[heater_profile_column].unique())
+    return sorted(profiles)
 
 def split_by_session(df: pd.DataFrame, config: ExperimentConfig) -> pd.DataFrame:
     #Aufteilung wird getrennt nach Label berechnet. Nie selbe Session in Training und Testing

@@ -34,7 +34,7 @@ META_COLUMNS = [
 
 
 def load_feature_table(data_dir: Path) -> tuple[pd.DataFrame, list[str]]:
-    """Liest alle CSVs in data_dir ein und führt sie zusammen. Gibt
+    """Liest alle CSVs in source_dir ein und führt sie zusammen. Gibt
     (DataFrame, feature_cols) zurück. Erwartet das von core.py erzeugte
     Format (Spalten wie 'label', 'session', Feature-Spalten)."""
     data_dir = Path(data_dir)
