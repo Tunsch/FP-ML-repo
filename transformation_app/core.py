@@ -464,29 +464,36 @@ def build_outputs(per_file: list, levels: list, combine: str,
                 cols = ["vector_id", "label", "session", "category"] + meta_cols + feature_cols
                 outputs[path] = g[cols].to_csv(index=False, float_format="%.6f")
         elif combine == "hierarchy":
-            # Prüfen, ob heater_profile_id vorhanden ist (bei Level 3 fehlt sie)
-            if "heater_profile_id" in full.columns:
+            # Für Level 1: Aufteilung nach einzelnen Sensoren
+            if level == 1 and "sensor_index" in full.columns:
+                for (lbl, sess, s_idx, cat), g in full.groupby(["label", "session", "sensor_index", "category"]):
+                    clean_lbl = sanitize_label(lbl)
+                    clean_sess = sanitize_label(sess)
+                    # Erzeugt: Messobjekt / Messsession / sensor_0.csv
+                    path = f"{level_dir}/{cat_subdir(cat)}{clean_lbl}/{clean_sess}/sensor_{s_idx}.csv"
+                    cols = ["vector_id", "label", "session", "category"] + meta_cols + feature_cols
+                    outputs[path] = g[cols].to_csv(index=False, float_format="%.6f")
+
+            # Für Level 2: Aufteilung nach Heizprofil (Sensoren-Paare)
+            elif "heater_profile_id" in full.columns:
                 for (lbl, sess, hp, cat), g in full.groupby(["label", "session", "heater_profile_id", "category"]):
                     clean_lbl = sanitize_label(lbl)
                     clean_sess = sanitize_label(sess)
                     clean_hp = sanitize_label(hp)
-                    # Erzeugt: Messobjekt / Messsession / Heizprofil.csv
+                    # Erzeugt: Messobjekt / Messsession / heater_322.csv
                     path = f"{level_dir}/{cat_subdir(cat)}{clean_lbl}/{clean_sess}/{clean_hp}.csv"
                     cols = ["vector_id", "label", "session", "category"] + meta_cols + feature_cols
                     outputs[path] = g[cols].to_csv(index=False, float_format="%.6f")
+
+            # Fallback für Level 3 (alle Sensoren zusammen)
             else:
-                # Fallback für Level 3 (da hier über alle Sensoren und Profile aggregiert wird)
                 for (lbl, sess, cat), g in full.groupby(["label", "session", "category"]):
                     clean_lbl = sanitize_label(lbl)
                     clean_sess = sanitize_label(sess)
+                    # Erzeugt: Messobjekt / Messsession / all_profiles.csv
                     path = f"{level_dir}/{cat_subdir(cat)}{clean_lbl}/{clean_sess}/all_profiles.csv"
                     cols = ["vector_id", "label", "session", "category"] + meta_cols + feature_cols
                     outputs[path] = g[cols].to_csv(index=False, float_format="%.6f")
-        else:  # all
-            for cat, g in full.groupby("category"):
-                path = f"{level_dir}/{cat_subdir(cat)}all.csv"
-                cols = ["vector_id", "label", "session", "category"] + meta_cols + feature_cols
-                outputs[path] = g[cols].to_csv(index=False, float_format="%.6f")
 
     return outputs
 
