@@ -410,7 +410,8 @@ def train_test_split_by_session(df: pd.DataFrame, test_ratio: float = 0.2, seed:
 
 def build_outputs(per_file: list, levels: list, combine: str,
                    apply_split: bool, test_ratio: float, seed: int,
-                   session_split: Optional[dict] = None) -> dict:
+                   session_split: Optional[dict] = None,
+                   level1_sensor: Optional[int] = None) -> dict:
     """per_file: Liste von process_file()-Ergebnissen.
     Gibt {relativer_dateipfad (str): csv_inhalt (str)} zurück -- unabhängig
     davon, ob das Ergebnis danach auf Platte geschrieben oder in ein ZIP für
