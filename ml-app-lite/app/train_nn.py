@@ -16,9 +16,9 @@ from profiles import resolve_profiles, for_profile
 from reporting import export_results
 
 # Kleine, bewusst überschaubare Hyperparametersuche.
-TUNING_ARCHITECTURES = [[20, 10], [32, 16], [64, 32], [128, 64], [40, 20, 10], [64, 32, 16], [128, 64, 32], [256, 128, 64]]
-TUNING_LEARNING_RATES = [0.001, 0.005, 0.0001]
-TUNING_DROPOUTS = [0.0, 0.2, 0.4]
+TUNING_ARCHITECTURES = [ [12], [20], [32], [64], [16, 8], [20, 10], [32, 16], [64, 32], [20, 10, 5]]
+TUNING_LEARNING_RATES = [0.0001, 0.001, 0.005]
+TUNING_DROPOUTS = [0.0, 0.2, 0.4, 0.5]
 
 
 def build_model(

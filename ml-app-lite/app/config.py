@@ -12,9 +12,9 @@ class ExperimentConfig:
     #Split/CV, siehe Chat-Diskussion).
     data_variant: Literal["heater_profile_level", "sensor_level"] = "sensor_level"
 
-    source_dir: Path = Path("/home/tun/Projects/tuc/ML/FP-ML-repo/raw_input_data/Bad") #anpassen
+    source_dir: Path = Path("/home/tun/Projects/tuc/ML/FP-ML-repo/ml-app-lite/data/raw_input_data/Bad/") #anpassen
     #Wurzelverzeichnis der sensorbasierten Rohdaten, nur für data_variant="sensor_level"
-    sensor_source_dir: Optional[Path] = Path("/home/tun/Projects/tuc/ML/FP-ML-repo/raw_input_data/Bad/level1_per_sensor") #anpassen, falls data_variant="sensor_level" genutzt wird
+    sensor_source_dir: Optional[Path] = Path("/home/tun/Projects/tuc/ML/FP-ML-repo/ml-app-lite/data/raw_input_data/Bad/level1_per_sensor/") #anpassen, falls data_variant="sensor_level" genutzt wird
 
     #Art des Splits. Bei explicit test_data_dir angeben
     split_mode: Literal["session", "explicit"] = "session"
@@ -67,10 +67,10 @@ class ExperimentConfig:
     heater_profile: Optional[str] = "heater_413"
 
     # Speicherort des präparierten Datensatzes
-    ml_data_dir: Path = Path("/home/tun/Projects/tuc/ML/FP-ML-repo/ml-app-lite/app/ml_data/ml_input_data")
+    ml_data_dir: Path = Path("/home/tun/Projects/tuc/ML/FP-ML-repo/ml-app-lite/data/ml_data/ml_input_data")
 
     # Speicherort für Reports (Exploration-Plots, Modell-Ergebnisse)
-    report_dir: Path = Path("/home/tun/Projects/tuc/ML/FP-ML-repo/ml-app-lite/app/ml_data/reports")
+    report_dir: Path = Path("/home/tun/Projects/tuc/ML/FP-ML-repo/ml-app-lite/data/ml_data/reports")
 
     #Validierung / Modellauswahl (Stufe 1, auf Trainingsdaten via GroupKFold über Session)
     cv_folds: int = 3
