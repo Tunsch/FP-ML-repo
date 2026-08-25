@@ -1,0 +1,3 @@
+- ohne Imputation
+- mean aus Sensorpaar je Heizprofil
+- nicht logarithmiert
