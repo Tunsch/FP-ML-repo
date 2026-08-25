@@ -433,9 +433,17 @@ def build_outputs(per_file: list, levels: list, combine: str,
         full = pd.concat([d for d, _ in rows_all], ignore_index=True)
         feature_cols = rows_all[0][1]
 
+        # --- NEU: Level 1 nach bestimmtem Sensor filtern ---
+        if level == 1 and level1_sensor is not None:
+            if "sensor_index" in full.columns:
+                full = full[full["sensor_index"] == level1_sensor].copy()
+                if full.empty:
+                    continue  # Überspringen, falls dieser Sensor nicht existiert
+        # ---------------------------------------------------
+
         if apply_split:
             full = train_test_split_by_session(full, test_ratio=test_ratio, seed=seed,
-                                                session_split=session_split)
+                                               session_split=session_split)
         else:
             full["category"] = "unsplit"
 

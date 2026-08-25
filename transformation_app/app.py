@@ -33,6 +33,14 @@ with st.sidebar:
         default=[1],
         format_func=lambda l: f"Level {l} – {LEVEL_NAMES[l]}",
     )
+
+    # --- NEU: UI für Sensor-Filter ---
+    level1_sensor = None
+    if 1 in levels:
+        if st.checkbox("Level 1: Nur einen bestimmten Sensor exportieren"):
+            level1_sensor = st.number_input("Sensor-Index (z.B. 0-7)", min_value=0, max_value=7, value=0, step=1)
+    # ---------------------------------
+
     level2_mode = "concat"
     if 2 in levels:
         level2_mode = st.radio("Level 2: Sensorpaar kombinieren als", ["concat", "mean"], horizontal=True)
@@ -189,7 +197,8 @@ with tab_converter:
                         st.error("Keine verwertbaren Daten in den hochgeladenen Dateien gefunden.")
                     else:
                         outputs = build_outputs(per_file, levels, combine, apply_split=apply_split,
-                                                test_ratio=test_ratio, seed=split_seed, session_split=session_split)
+                                                test_ratio=test_ratio, seed=split_seed, session_split=session_split,
+                                                level1_sensor=level1_sensor)  # <-- NEU angehängt
 
                         overview = pd.DataFrame(
                             [{"session": r["session_tag"], "label": r["label"]} for r in per_file]
