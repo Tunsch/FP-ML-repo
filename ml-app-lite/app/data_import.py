@@ -8,7 +8,7 @@ import pandas as pd
 from config import ExperimentConfig
 
 def load_csv_dir(data_dir: Path, heater_profile: Optional[str] = None,
-                 heater_profile_column: str = "heater_profile_id") -> pd.DataFrame:
+                  heater_profile_column: str = "heater_profile_id") -> pd.DataFrame:
     csv_files = sorted(data_dir.rglob("*.csv"))
     if not csv_files:
         raise FileNotFoundError(f"No CSV files in {data_dir}")
@@ -23,13 +23,15 @@ def load_csv_dir(data_dir: Path, heater_profile: Optional[str] = None,
                 [pd.read_csv(f, usecols=[heater_profile_column]) for f in csv_files]
             )[heater_profile_column].unique())
             raise ValueError(f"Heizprofil '{heater_profile}' nicht in {data_dir} gefunden. "
-                             f"Verfügbar: {available}")
+                              f"Verfügbar: {available}")
         print(f"{data_dir}: auf Heizprofil '{heater_profile}' gefiltert "
               f"({len(df)}/{n_before} Zeilen).")
     return df
 
+
 def discover_heater_profiles(data_dir: Path, heater_profile_column: str = "heater_profile_id") -> list[str]:
-    #Findet alle Heizprofile
+    """Findet alle im Datensatz vorkommenden Heizprofile, ohne die vollen CSVs
+    zu laden (nur die relevante Spalte je Datei)."""
     csv_files = sorted(Path(data_dir).rglob("*.csv"))
     if not csv_files:
         raise FileNotFoundError(f"No CSV files in {data_dir}")
@@ -64,14 +66,14 @@ def split_by_session(df: pd.DataFrame, config: ExperimentConfig) -> pd.DataFrame
 def split_dataset(config: ExperimentConfig) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
     #Split entsprechend config.split_mode, bei "session" je Label stratifiziert
     if config.split_mode == "session":
-        df = load_csv_dir(config.source_dir)
+        df = load_csv_dir(config.active_source_dir, config.heater_profile, config.heater_profile_column)
         df = split_by_session(df, config)
 
     elif config.split_mode == "explicit":
         if config.test_data_dir is None:
             raise ValueError("split_mode='explicit' erfordert test_data_dir in der Config.")
-        train_df = load_csv_dir(config.source_dir)
-        test_df = load_csv_dir(config.test_data_dir)
+        train_df = load_csv_dir(config.active_source_dir, config.heater_profile, config.heater_profile_column)
+        test_df = load_csv_dir(config.test_data_dir, config.heater_profile, config.heater_profile_column)
         train_df["category"] = "training"
         test_df["category"] = "testing"
         df = pd.concat([train_df, test_df], ignore_index=True)

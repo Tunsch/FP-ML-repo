@@ -25,26 +25,26 @@ CANDIDATE_MODELS: dict[str, dict[str, Any]] = {
     "random_forest": {
         "estimator": RandomForestClassifier(random_state=42),
         "param_grid": {
-            "n_estimators": [100, 300, 500],
-            "max_depth": [None, 5, 10, 20, 30],
-            "max_features": ["sqrt", "log2", 0.5, 1.0],
-            "min_samples_leaf": [1, 2, 5, 10],
+            "n_estimators": [100, 300, 500, 750],
+            "max_depth": [5, 10, 20, 30, 50],
+            "max_features": ["sqrt", "log2", 0.3, 0.5, 0.7, 1.0],
+            "min_samples_leaf": [1, 2, 3, 4, 5, 10],
         },
     },
     "svm": {
         "estimator": SVC(probability=True),
         "param_grid": {
-            "C": [0.1, 1, 10, 100, 1000],
+            "C": [0.1, 1, 10, 30, 50, 70, 100, 200, 1000],
             "kernel": ["rbf", "linear"],
-            "gamma": ["scale", "auto"],
+            "gamma": [0.001, 0.005, 0.01, 0.05, 0.1, "scale", "auto"],
         },
     },
     "knn": {
         "estimator": KNeighborsClassifier(),
         "param_grid": {
-            "n_neighbors": [3, 5, 7, 9, 11, 15, 21],
+            "n_neighbors": [3, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 21],
             "weights": ["uniform", "distance"],
-            "metric": ["euclidean", "manhattan"],
+            "metric": ["euclidean", "manhattan", "chebyshev", "minkowski"],
         },
     },
 }
