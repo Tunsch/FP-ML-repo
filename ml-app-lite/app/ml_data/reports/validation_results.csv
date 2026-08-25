@@ -1,0 +1,2 @@
+model,params,is_best_for_model,accuracy,f1_macro,balanced_accuracy,timestamp
+nn_keras,"{'hidden_layers': [32, 16], 'optimizer': 'adam'}",True,0.3051948051948052,0.21021591363454617,0.4473684210526316,2026-08-20T14:40:04
