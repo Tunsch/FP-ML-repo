@@ -52,12 +52,17 @@ Konfidenz + alle Klassen-Scores (als JSON-String), Random-Forest-Label.
 Auch Timeouts/Fehler vom ESP32 werden als Zeile mit Fehlerkennung geloggt,
 damit in der Nachverfolgung sichtbar bleibt, dass ein Zyklus verworfen wurde.
 
-Anpassungsbedarf vor dem ersten Lauf:
+KEINE ABHAENGIGKEIT ZUR ML-PIPELINE: Alle Pfade/Einstellungen kommen aus
+edge_config.py (im selben Ordner) -- nicht aus config.py/ExperimentConfig
+des ML-Trainings-Repos. Das Preprocessing-Artefakt in data/ ist zwar
+urspruenglich ein Nebenprodukt des Trainings, aber sobald es einmal in
+data/preprocessing_artifact.json liegt, braucht ihr fuer Edge-Tests das
+ML-Repo nicht mehr.
+
+Anpassungsbedarf vor dem ersten Lauf (alles in edge_config.py):
 - SERIAL_PORT auf euren tatsaechlichen ESP32-Port setzen.
-- ARTIFACT_PATH ggf. auf den tatsaechlichen Pfad von preprocessing_artifact.json
-  zeigen (wird von prepare_ml_data.py in config.ml_data_dir geschrieben).
-- CSV_LOG_PATH ggf. anpassen (Default: classification_log.csv im aktuellen
-  Arbeitsverzeichnis).
+- data/preprocessing_artifact.json muss vorhanden sein (einmalig aus dem
+  Training kopiert bzw. direkt dorthin exportiert).
 """
 from __future__ import annotations
 
@@ -69,12 +74,9 @@ from pathlib import Path
 import numpy as np
 import serial  # pip install pyserial
 
-ARTIFACT_PATH = Path("preprocessing_artifact.json")
-SERIAL_PORT = "/dev/ttyACM0"   # Windows z.B. "COM5", macOS z.B. "/dev/cu.usbserial-XXXX"
-SERIAL_BAUD = 115200
-CSV_LOG_PATH = Path("classification_log.csv")
-
-N_EXPECTED_STEPS = 10   # Heizprofil hat immer 10 Stufen -- fixer Wert (wie im .ino)
+from edge_config import (
+    ARTIFACT_PATH, CSV_LOG_PATH, N_EXPECTED_STEPS, SERIAL_BAUD, SERIAL_PORT,
+)
 
 CSV_FIELDNAMES = (
     ["timestamp"]
@@ -86,6 +88,12 @@ CSV_FIELDNAMES = (
 
 
 def load_artifact(path: Path = ARTIFACT_PATH) -> dict:
+    if not path.exists():
+        raise FileNotFoundError(
+            f"{path} nicht gefunden. Kopiert das Preprocessing-Artefakt "
+            f"einmalig aus dem ML-Training (preprocessing_artifact.json) "
+            f"nach {path}, oder passt ARTIFACT_PATH in edge_config.py an."
+        )
     with open(path, "r", encoding="utf-8") as f:
         artifact = json.load(f)
     required = ["n_expected_steps", "log_transform", "log_clip_eps",
@@ -120,6 +128,7 @@ def preprocess(raw_values: list[float], artifact: dict) -> tuple[np.ndarray, np.
 
 
 def ensure_csv_header(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     if not path.exists():
         with open(path, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=CSV_FIELDNAMES)

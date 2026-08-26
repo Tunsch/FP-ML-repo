@@ -10,7 +10,7 @@ im aufrufenden Code (Notebook oder run_experiment.py):
 
     from ml.config import ExperimentConfig
     config = ExperimentConfig(
-        data_dir="data/level2_per_profile",
+        source_dir="data/level2_per_profile",
         model_name="svm",
         model_params={"C": 1, "kernel": "rbf"},
         scaling=True,
@@ -58,7 +58,7 @@ class ExperimentConfig:
     def as_dict(self) -> dict[str, Any]:
         """Für Tracking/Serialisierung -- Pfade als Strings, damit JSON-tauglich."""
         d = asdict(self)
-        d["data_dir"] = str(self.data_dir)
+        d["source_dir"] = str(self.data_dir)
         d["results_dir"] = str(self.results_dir)
         d["result_file"] = str(self.result_file)
         return d

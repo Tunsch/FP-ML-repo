@@ -1,9 +1,9 @@
 """Stufe 2: Finale, EINMALIGE Testauswertung.
 
-Bestimmt das laut Validierung (Stufe 1, validation.py) beste sklearn-Modell
-je Heizprofil (anhand config.selection_metric in validation_results.csv),
-fittet es auf dem GESAMTEN Trainingsset neu und wertet es GENAU EINMAL auf
-dem bisher unberührten Testset aus.
+Bestimmt das laut Validierung (Stufe 1, validation.py) beste Modell je
+Heizprofil (anhand config.selection_metric in validation_results.csv) --
+über RF/SVM/KNN/NN hinweg -- und wertet es GENAU EINMAL auf dem bisher
+unberührten Testset aus.
 
 WICHTIG: Dieses Skript sollte erst laufen, wenn die Modell-/Hyperparameterwahl
 abgeschlossen ist. Wiederholtes Ausführen nach Config-Änderungen und erneuter
@@ -11,11 +11,19 @@ Testauswertung unterläuft den Sinn eines unabhängigen Testsets (siehe
 Chat-Diskussion Validierung vs. Test) -- braucht dann eigentlich einen neuen,
 bisher unberührten Holdout, um wieder eine ehrliche Zahl zu bekommen.
 
-NN (nn_keras, aus train_nn.py) wird hier bewusst NICHT automatisch mit
-ausgewertet -- das Modell ist bereits vorab trainiert (nicht auf dem vollen
-Trainingsset) und liegt als .keras-Datei vor. Für einen fairen Vergleich mit
-den sklearn-Modellen (die hier auf ganz X_train neu gefittet werden) siehe
-Hinweis am Ende dieser Datei / im Chat.
+RF/SVM/KNN vs. NN werden hier UNTERSCHIEDLICH behandelt (siehe validation.py,
+Abschnitt "WICHTIGE ASYMMETRIE" / Option A):
+- RF/SVM/KNN: ungefitteter Klon mit den besten Params aus Stufe 1 wird HIER
+  auf dem GESAMTEN Trainingsset neu gefittet (keine erneute CV mehr, die
+  Modell-/Hyperparameterwahl ist mit Stufe 1 bereits abgeschlossen).
+- NN: wird NICHT erneut trainiert. Das in Stufe 1 bereits fertig trainierte
+  Modell (80/20-Split mit Early Stopping, siehe validation.py) wird per
+  reporting.save_nn_artifact() als Datei geladen und direkt auf dem Testset
+  ausgewertet. Ein Refit auf 100% der Daten würde wieder eine Heuristik zur
+  Epochenzahl erfordern -- genau das, was Option A bewusst vermeidet. Das NN
+  hat dadurch beim finalen Test real weniger Trainingsdaten gesehen als
+  RF/SVM/KNN; dieser Kompromiss ist klein, transparent benannt und dem
+  Alternative (ungeprüfte Epochen-Heuristik) vorzuziehen.
 """
 import ast
 from pathlib import Path
@@ -29,14 +37,17 @@ from sklearn.metrics import (accuracy_score, balanced_accuracy_score,
 
 from config import ExperimentConfig
 from profiles import for_profile, resolve_profiles
-from reporting import RESULTS_FILENAME
+from reporting import NN_LABEL_ENCODER_FILENAME, NN_MODEL_FILENAME, RESULTS_FILENAME
 from validation import CANDIDATE_MODELS
+
+NN_MODEL_NAME = "nn_keras"
 
 
 def select_best_row(config: ExperimentConfig) -> pd.Series:
     """Liest validation_results.csv und gibt die Zeile mit dem laut
     config.selection_metric besten Ergebnis unter allen als 'beste
-    Konfiguration je Modell' markierten Zeilen zurück."""
+    Konfiguration je Modell' markierten Zeilen zurück -- über RF/SVM/KNN/NN
+    hinweg, da alle in derselben CSV mit vergleichbaren Metriken stehen."""
     results_path = Path(config.report_dir) / RESULTS_FILENAME
     if not results_path.exists():
         raise FileNotFoundError(f"Keine Validierungsergebnisse unter {results_path} -- "
@@ -49,22 +60,42 @@ def select_best_row(config: ExperimentConfig) -> pd.Series:
                           f"(verfügbar: {list(history.columns)}).")
 
     candidates = history[history["is_best_for_model"]] if "is_best_for_model" in history.columns else history
-    #Nur sklearn-Kandidaten aus validation.py -- nn_keras absichtlich außen vor
-    #(siehe Docstring oben), damit der automatische Refit nicht versehentlich
-    #versucht, ein Keras-Modell wie ein sklearn-Objekt zu behandeln.
-    candidates = candidates[candidates["model"].isin(CANDIDATE_MODELS.keys())]
+    valid_models = set(CANDIDATE_MODELS.keys()) | {NN_MODEL_NAME}
+    candidates = candidates[candidates["model"].isin(valid_models)]
     if candidates.empty:
-        raise ValueError(f"Keine sklearn-Kandidatenzeilen in {results_path} gefunden.")
+        raise ValueError(f"Keine gültigen Kandidatenzeilen in {results_path} gefunden.")
 
     return candidates.loc[candidates[metric].idxmax()]
 
 
 def build_final_estimator(best_row: pd.Series):
-    """Ungefitteter Klon des besten Modells mit dessen besten Parametern aus
-    der Validierung (Stufe 1)."""
+    """Ungefitteter Klon des besten sklearn-Modells mit dessen besten
+    Parametern aus der Validierung (Stufe 1). Nur für RF/SVM/KNN -- fürs NN
+    siehe load_final_nn_model()."""
     model_name = best_row["model"]
     params = ast.literal_eval(best_row["params"])
     return clone(CANDIDATE_MODELS[model_name]["estimator"]).set_params(**params)
+
+
+def load_final_nn_model(config: ExperimentConfig):
+    """Lädt das in Stufe 1 bereits fertig trainierte NN-Modell + den
+    zugehörigen LabelEncoder von der Platte (siehe reporting.save_nn_artifact
+    / validation.py, Option A). Kein Refit hier -- im Unterschied zu
+    build_final_estimator() für RF/SVM/KNN."""
+    from tensorflow import keras
+
+    out_dir = Path(config.report_dir)
+    model_path = out_dir / NN_MODEL_FILENAME
+    encoder_path = out_dir / NN_LABEL_ENCODER_FILENAME
+    if not model_path.exists() or not encoder_path.exists():
+        raise FileNotFoundError(
+            f"Kein gespeichertes NN-Modell unter {model_path} -- "
+            f"zuerst run_validation.py ausführen (Stufe 1, speichert es via "
+            f"reporting.save_nn_artifact)."
+        )
+    model = keras.models.load_model(model_path)
+    label_encoder = joblib.load(encoder_path)
+    return model, label_encoder
 
 
 def run_for_profile(config: ExperimentConfig) -> None:
@@ -79,11 +110,21 @@ def run_for_profile(config: ExperimentConfig) -> None:
           f"(Validierungs-{config.selection_metric}={best_row[config.selection_metric]:.3f}, "
           f"Params={best_row['params']})")
 
-    #Finaler Refit auf dem GESAMTEN Trainingsset -- keine erneute CV mehr,
-    #die Modell-/Hyperparameterwahl ist mit Stufe 1 bereits abgeschlossen.
-    estimator = build_final_estimator(best_row)
-    estimator.fit(X_train, y_train)
-    y_pred = estimator.predict(X_test)
+    if model_name == NN_MODEL_NAME:
+        #NN: KEIN Refit -- das bereits fertig trainierte Modell aus Stufe 1
+        #wird direkt geladen und ausgewertet (siehe Modul-Docstring/Option A).
+        model, label_encoder = load_final_nn_model(config)
+        y_pred_encoded = model.predict(X_test, verbose=0).argmax(axis=1)
+        y_pred = label_encoder.inverse_transform(y_pred_encoded)
+        print(f"[{config.heater_profile}] NN wird OHNE erneuten Refit ausgewertet "
+              f"(bereits in Stufe 1 auf einem 80%-Split trainiert, siehe Docstring).")
+    else:
+        #RF/SVM/KNN: finaler Refit auf dem GESAMTEN Trainingsset -- keine
+        #erneute CV mehr, die Modell-/Hyperparameterwahl ist mit Stufe 1
+        #bereits abgeschlossen.
+        estimator = build_final_estimator(best_row)
+        estimator.fit(X_train, y_train)
+        y_pred = estimator.predict(X_test)
 
     metrics = {
         "accuracy": accuracy_score(y_test, y_pred),

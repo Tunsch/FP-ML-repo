@@ -35,8 +35,14 @@ def run_for_profile(config: ExperimentConfig) -> None:
     print(f"[{config.heater_profile}] Prepared data saved at {output_dir}")
 
     #4b. Zusätzlich: portables JSON-Preprocessing-Artefakt für die Edge-/Live-
-    #Pipeline (pc_live_classify.py) -- siehe Docstring in preprocessing.py.
-    export_scaler_artifact(scaler, feature_cols, config, train_df)
+    #Pipeline. Zeigt NICHT auf config.ml_data_dir, sondern direkt in den
+    #eigenständigen edge_classification/data/-Ordner (siehe edge_config.py
+    #dort) -- die Edge-Tests sollen unabhängig von dieser ML-Pipeline laufen.
+    #Pfad bei Bedarf an euren tatsächlichen edge_classification-Ordner anpassen.
+    export_scaler_artifact(
+        scaler, feature_cols, config, train_df,
+        out_path=Path("/home/tun/Projects/tuc/ML/FP-ML-repo/edge_classification/data/preprocessing_artifact.json"),
+    )
 
     #TESTCODE
     print(f"\n=== [{config.heater_profile}] Spalten im DataFrame ===")

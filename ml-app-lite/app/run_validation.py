@@ -8,7 +8,8 @@ import joblib
 
 from config import ExperimentConfig
 from profiles import resolve_profiles, for_profile
-from reporting import export_results, generate_model_plots
+from reporting import (export_results, generate_model_plots, generate_nn_plot,
+                        save_nn_artifact)
 from validation import run_validation
 
 
@@ -21,9 +22,15 @@ def run_for_profile(config: ExperimentConfig) -> None:
     print(f"[{config.heater_profile}] Präparierte Daten geladen aus {payload_path} "
           f"({len(X_train)} Zeilen).")
 
-    results, best_estimators = run_validation(X_train, y_train, groups_train, config)
+    #results enthält RF/SVM/KNN/NN einheitlich. best_estimators (ungefittet,
+    #für Refit) nur RF/SVM/KNN. nn_artifact ist bereits fertig trainiert und
+    #wird eigens geplottet + auf die Platte gespeichert (siehe validation.py
+    #und reporting.py, Abschnitt zur NN-Asymmetrie / Option A).
+    results, best_estimators, nn_artifact = run_validation(X_train, y_train, groups_train, config)
     export_results(results, config)
     generate_model_plots(results, best_estimators, X_train, y_train, groups_train, config)
+    generate_nn_plot(nn_artifact, results, X_train, y_train, config)
+    save_nn_artifact(nn_artifact, config)
 
 
 def main():

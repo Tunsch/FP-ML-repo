@@ -64,7 +64,7 @@ class ExperimentConfig:
     #ML-Pipeline laufen bewusst GETRENNT pro Profil.
     #None -> alle im Datensatz gefundenen Profile nacheinander verarbeiten.
     #"heater_322" (z.B.) -> nur dieses eine Profil.
-    heater_profile: Optional[str] = "heater_413"
+    heater_profile: Optional[str] = None
 
     # Speicherort des präparierten Datensatzes
     ml_data_dir: Path = Path("/home/tun/Projects/tuc/ML/FP-ML-repo/ml-app-lite/data/ml_data/ml_input_data")
