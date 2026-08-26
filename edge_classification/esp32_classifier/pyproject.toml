@@ -1,0 +1,8 @@
+[project]
+name = "esp32-classifier"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.5.2",
+    "pyserial>=3.5",
+]

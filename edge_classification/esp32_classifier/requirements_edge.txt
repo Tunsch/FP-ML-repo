@@ -1,0 +1,7 @@
+# Zusätzlich zu requirements.txt / dem ML-Pipeline-requirements.txt für
+# pc_preprocess_bridge.py:
+#
+# Der BME688 hängt am ESP32-S3, nicht am PC -- daher wird hier KEINE
+# BME688-Treiberbibliothek benötigt, nur die serielle Kommunikation.
+
+pyserial>=3.5
