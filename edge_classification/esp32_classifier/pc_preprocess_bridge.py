@@ -211,10 +211,9 @@ def main():
             ei_scores = msg.get("scores")
             rf_label = msg.get("rf_label")
 
-            print(f"Klassifikation: label={ei_label} "
-                  f"confidence={ei_confidence:.3f} "
-                  f"| Random Forest: {rf_label} "
-                  f"scores={ei_scores}")
+            print(f"Edge Impulse: {ei_label} ({ei_confidence:.1%})  |  "
+                  f"Random Forest: {rf_label}  |  "
+                  f"EI-Scores: {ei_scores}")
 
             append_csv_row(
                 CSV_LOG_PATH, last_raw_values, last_log_values, last_scaled_values,

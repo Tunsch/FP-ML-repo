@@ -3,7 +3,7 @@ from pathlib import Path
 from config import ExperimentConfig
 from data_import import split_dataset
 from exploration import run_exploration
-from preprocessing import preprocess_pipeline
+from preprocessing import preprocess_pipeline, export_scaler_artifact
 from profiles import resolve_profiles, for_profile
 
 def run_for_profile(config: ExperimentConfig) -> None:
@@ -13,11 +13,11 @@ def run_for_profile(config: ExperimentConfig) -> None:
     #2. Explorative Datenanalyse
     run_exploration(train_df, feature_cols, config)
 
-    #3. Preprocessing
-    X_train, X_test, y_train, y_test, groups_train, groups_test = preprocess_pipeline(
+    #3. Preprocessing (gibt jetzt zusätzlich den gefitteten scaler zurück)
+    X_train, X_test, y_train, y_test, groups_train, groups_test, scaler = preprocess_pipeline(
         train_df, test_df, feature_cols, config)
 
-    #4. Speichern per joblib
+    #4. Speichern per joblib (weiterhin für die Python-interne ML-Pipeline)
     output_dir = Path(config.ml_data_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -28,11 +28,21 @@ def run_for_profile(config: ExperimentConfig) -> None:
         "y_test": y_test,
         "groups_train": groups_train, #Session je Zeile, für sessionweise CV (z.B. GroupKFold)
         "groups_test": groups_test,
-        #"preprocessor": preprocessor,
+        "scaler": scaler,
         "config": config,
     }
     joblib.dump(payload, output_dir / "prepared_data.joblib")
     print(f"[{config.heater_profile}] Prepared data saved at {output_dir}")
+
+    #4b. Zusätzlich: portables JSON-Preprocessing-Artefakt für die Edge-/Live-
+    #Pipeline. Zeigt NICHT auf config.ml_data_dir, sondern direkt in den
+    #eigenständigen edge_classification/data/-Ordner (siehe edge_config.py
+    #dort) -- die Edge-Tests sollen unabhängig von dieser ML-Pipeline laufen.
+    #Pfad bei Bedarf an euren tatsächlichen edge_classification-Ordner anpassen.
+    export_scaler_artifact(
+        scaler, feature_cols, config, train_df,
+        out_path=Path("/home/tun/Projects/tuc/ML/FP-ML-repo/edge_classification/data/preprocessing_artifact.json"),
+    )
 
     #TESTCODE
     print(f"\n=== [{config.heater_profile}] Spalten im DataFrame ===")
@@ -56,4 +66,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
